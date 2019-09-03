@@ -3,6 +3,8 @@ Team Members: Mike Winters, Maxime Gavronsky
 
 Demo Video : https://www.youtube.com/watch?v=4LukunZrlmQ&feature=youtu.be
 
+•	Demo Video
+
 PART 1
 ======
 
