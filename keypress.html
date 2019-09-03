@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<h2>Hello and welcome to our car! </h2>
+<h2> This webpage will allow you to drive our car by using the arrow keys on your computer!</h2>
+
+<script>
+
+    /* keybuf stores booleans for whether W,A,S,D,<,> are pressed down */
+    var keybuf = [false, false, false, false, false, false];
+
+    /* create new XHR to request sendCmd.py from the webserver, which takes 4 motor speed arguments and sends them to the arduino */
+    var server = "http://localhost:8080/dynamic/sendCmd.py?";
+    var xhr = new XMLHttpRequest();
+
+    /* scale is a function that maps one range of values onto another */
+    const scale = (num, in_min, in_max, out_min, out_max) => {
+        return (num - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+    }
+
+    /* normalize() converts all 4 motor velocity vectors to unit vectors, then maps the magnitudes to speeds from [1ms..2ms] */ 
+    function normalize(speeds){
+        maxVec = Math.abs(speeds[0]);
+        var i;
+        for (i = 1; i < speeds.length; i++) {
+            var temp = Math.abs(speeds[i]);
+            if (temp > maxVec)
+                maxVec = temp;
+        }
+        for (i = 0; i < speeds.length; i++) {
+            speeds[i] = Math.floor(scale(speeds[i] / maxVec, -1, 1, 1, 2) * 1000);
+        }
+        return speeds
+    }
+
+    /* eventHandler for keydown/keyup events; sets appropriate index in keybuf[] to true/false */
+    function check(event){
+        event = event || window.event;
+        if(event.keyCode == 37){
+            keybuf[0] = event.type == 'keydown';
+        }
+        if(event.keyCode == 39){
+            keybuf[1] = event.type == 'keydown';
+        }
+        if(event.keyCode == 87){
+            keybuf[2] = event.type == 'keydown';
+        }
+        if(event.keyCode == 65){
+            keybuf[3] = event.type == 'keydown';
+        }
+        if(event.keyCode == 83){
+            keybuf[4] = event.type == 'keydown';
+        }
+        if(event.keyCode == 68){
+            keybuf[5] = event.type == 'keydown';
+        }
+    };
+
+    /* loop constantly checks keybuf and creates velocity vectors based on which keys are currently down, then sends them to the arduino via sendCmd.py */
+    (function loop(){
+        var l = keybuf.length
+        var i;
+        var motorSpeeds = [1.5, 1.5, 1.5, 1.5];
+        var xVec = 0; 
+        var yVec = 0;
+        var zVec = 0;
+        var cmd = "";
+        for(i = 0; i < l; i ++){
+            cmd = "";
+            if(keybuf[i]){
+                switch(i){
+                    case 0: cmd = "L";  zVec = -1;  break;
+                    case 1: cmd = "R";  zVec = 1;   break;
+                    case 2: cmd = "W";  yVec = 1;   break;
+                    case 3: cmd = "A";  xVec = -1;  break;
+                    case 4: cmd = "S";  yVec = -1;  break;
+                    case 5: cmd = "D";  xVec = 1;   break;
+                    default:                        break;
+                }
+            }
+        }
+
+
+        /* if two conflicting keys are pressed, cancel the signal and send 0 for that vector */
+        if (keybuf[0] && keybuf[1]) //L+R
+            zVec = 0;
+        if (keybuf[2] && keybuf[4]) //W+S
+            yVec = 0;
+        if (keybuf[3] && keybuf[5]) //A+D
+            xVec = 0;
+
+
+//        X       X
+//      X           X
+//    X  A        B   X
+//            X
+//           XXX
+//            X
+//    X  C         D  X
+//      X  ARDUINO  X
+//        X BOARD X
+
+
+        /* calculate motor speeds; vector parity is based on motor alignment in the physical build */
+        motorSpeeds[0] = xVec + yVec + zVec;    //A
+        motorSpeeds[1] = xVec - yVec + zVec;    //B
+        motorSpeeds[2] = -xVec + yVec + zVec;   //C
+        motorSpeeds[3] = -xVec - yVec + zVec;   //D
+
+        motorSpeeds = normalize(motorSpeeds);
+
+
+        /* only send a command to the arduino if at least one vector is non-zero */
+        if (xVec || yVec || zVec) {
+
+            for (var i = 0; i < motorSpeeds.length; i++) {
+                server += motorSpeeds[i].toString();
+		server += '&'; 
+            }
+
+            server = server.substring(0, server.length - 1);
+            xhr.open("GET", server, true);
+            xhr.send();
+            console.log(server);
+	    server = "http://localhost:8080/dynamic/sendCmd.py?"
+        }
+
+        /* iterate loop every 50ms */
+        setTimeout(loop,50); 
+    })();
+</script> 
+<body onkeydown="check(event)" onkeyup="check(event)">
+</body>
+</html>
