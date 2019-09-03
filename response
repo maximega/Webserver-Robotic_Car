@@ -1,0 +1,12 @@
+HTTP/1.1 200 OK
+Content-Type: text/html; charset=UTF-8
+
+<!DOCTYPE html>
+<html>
+<head>
+<h1 style="color:red; text-align:center; font-size:16pt;">CS410 Webserver</h1><br />
+</head>
+<body>
+<center><img src="../histogram.jpeg" height="600" width="750"/></center>
+</body>
+</html>
